@@ -93,6 +93,49 @@ class Lexer:
             token = Token(self.curChar, TokenType.NEWLINE)
         elif self.curChar == '\0':
             token = Token('', TokenType.EOF)
+        elif self.curChar == '\"':
+            # Get characters between quotations.
+            self.nextChar()
+            startPos = self.curPos
+
+            while self.curChar != '\"':
+                # Don't allow special characters in the string. No escape characters, newlines, tabs, or %.
+                # We will be using C's printf on this string.
+                if self.curChar == '\r' or self.curChar == '\n' or self.curChar == '\t' or self.curChar == '\\' or self.curChar == '%':
+                    self.abort("Illegal character in string.")
+                self.nextChar()
+
+            tokText = self.source[startPos : self.curPos] # Get the substring.
+            token = Token(tokText, TokenType.STRING)
+
+        elif self.curChar.isalpha():
+            # Leading character is a letter, so this must be an identifier or a keyword.
+            # Get all consecutive alpha numeric characters.
+            startPos = self.curPos
+            while self.peek().isalnum():
+                self.nextChar()
+
+            # Check if the token is in the list of keywords.
+            tokText = self.source[startPos : self.curPos + 1] # Get the substring.
+            keyword = Token.checkIfKeyword(tokText)
+            if keyword == None: # Identifier
+                token = Token(tokText, TokenType.IDENT)
+            else:   # Keyword
+                token = Token(tokText, keyword)
+        elif self.curChar.isalnum():
+            # Leading character is a letter, so this must be an identifier or a keyword.
+            # Get all consecutive alpha numeric characters.
+            startPos = self.curPos
+            while self.peek().isalnum():
+                self.nextChar()
+
+            # Check if the token is in the list of keywords.
+            tokText = self.source[startPos : self.curPos + 1] # Get the substring.
+            keyword = Token.checkIfKeyword(tokText)
+            if keyword == None: # Identifier
+                token = Token(tokText, TokenType.NUMBER)
+            else:   # Keyword
+                token = Token(tokText, keyword)
         else:
             self.abort("Unknown token: " + self.curChar)
 
@@ -104,6 +147,14 @@ class Token:
     def __init__(self, tokenText, tokenKind):
         self.text = tokenText   # The token's actual text. Used for identifiers, strings, and numbers.
         self.kind = tokenKind   # The TokenType that this token is classified as.
+
+    @staticmethod
+    def checkIfKeyword(tokenText):
+        for kind in TokenType:
+            # Relies on all keyword enum values being 1XX.
+            if kind.name == tokenText and kind.value >= 100 and kind.value < 200:
+                return kind
+        return None
 
 class TokenType(enum.Enum):
 	EOF = -1
